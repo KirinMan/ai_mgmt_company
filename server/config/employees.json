@@ -1,0 +1,32 @@
+{
+  "employees": [
+    {
+      "id": "eng-01",
+      "name": "アキラ",
+      "role": "Engineer",
+      "department": "開発部",
+      "apiKeyEnv": "ANTHROPIC_API_KEY"
+    },
+    {
+      "id": "eng-02",
+      "name": "ミサキ",
+      "role": "QA",
+      "department": "開発部",
+      "apiKeyEnv": "ANTHROPIC_API_KEY"
+    },
+    {
+      "id": "pm-01",
+      "name": "ケンジ",
+      "role": "PM",
+      "department": "企画部",
+      "apiKeyEnv": "ANTHROPIC_API_KEY"
+    },
+    {
+      "id": "des-01",
+      "name": "ユイ",
+      "role": "Designer",
+      "department": "デザイン部",
+      "apiKeyEnv": "ANTHROPIC_API_KEY"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "name": "desktop",
+  "private": true,
+  "version": "0.1.0",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "tsc -p tsconfig.json && electron dist/main.js",
+    "build": "tsc -p tsconfig.json",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:win": "npm run build && electron-builder --win"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.2"
+  },
+  "build": {
+    "appId": "com.example.ai-office",
+    "productName": "AI社員オフィス",
+    "files": [
+      "dist/**/*"
+    ],
+    "extraResources": [
+      { "from": "../server/dist", "to": "server/dist" },
+      { "from": "../server/config", "to": "server/config" },
+      { "from": "../server/node_modules", "to": "server/node_modules" },
+      { "from": "../server/package.json", "to": "server/package.json" },
+      { "from": "../web/dist", "to": "web/dist" }
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  }
+}
