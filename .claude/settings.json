@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "/tmp/hook-probe.sh SessionStart" }] }
+    ],
+    "PreToolUse": [
+      { "matcher": "*", "hooks": [{ "type": "command", "command": "/tmp/hook-probe.sh PreToolUse" }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "*", "hooks": [{ "type": "command", "command": "/tmp/hook-probe.sh PostToolUse" }] }
+    ],
+    "Notification": [
+      { "hooks": [{ "type": "command", "command": "/tmp/hook-probe.sh Notification" }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "/tmp/hook-probe.sh Stop" }] }
+    ]
+  }
+}
