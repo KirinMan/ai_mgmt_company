@@ -10,6 +10,8 @@ dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 import { removeAgent } from "./claude-cli.js";
 import { getAllStates } from "./store.js";
+import { recordHookEvent } from "./activity-tracker.js";
+import type { HookEventPayload } from "./types.js";
 import {
   buildEmployeeViews,
   assignTask,
@@ -82,6 +84,14 @@ async function broadcastEmployeeViews() {
     if (client.readyState === client.OPEN) client.send(payload);
   }
 }
+
+// claude CLI の hooks（server/hooks/hook-handler.mjs）から飛んでくるイベント。
+// worktree 内で動いているエージェントの「今何をしているか」を即座に反映する。
+app.post("/api/hooks", (req, res) => {
+  res.status(202).end();
+  const employeeId = recordHookEvent(req.body as HookEventPayload);
+  if (employeeId) void broadcastEmployeeViews();
+});
 
 wss.on("connection", (ws) => {
   buildEmployeeViews().then((views) => {

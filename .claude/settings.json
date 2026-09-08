@@ -1,19 +1,19 @@
 {
   "hooks": {
     "SessionStart": [
-      { "hooks": [{ "type": "command", "command": "/tmp/hook-probe.sh SessionStart" }] }
+      { "hooks": [{ "type": "command", "command": "node server/hooks/hook-handler.mjs SessionStart" }] }
     ],
     "PreToolUse": [
-      { "matcher": "*", "hooks": [{ "type": "command", "command": "/tmp/hook-probe.sh PreToolUse" }] }
+      { "matcher": "*", "hooks": [{ "type": "command", "command": "node server/hooks/hook-handler.mjs PreToolUse" }] }
     ],
     "PostToolUse": [
-      { "matcher": "*", "hooks": [{ "type": "command", "command": "/tmp/hook-probe.sh PostToolUse" }] }
+      { "matcher": "*", "hooks": [{ "type": "command", "command": "node server/hooks/hook-handler.mjs PostToolUse" }] }
     ],
     "Notification": [
-      { "hooks": [{ "type": "command", "command": "/tmp/hook-probe.sh Notification" }] }
+      { "hooks": [{ "type": "command", "command": "node server/hooks/hook-handler.mjs Notification" }] }
     ],
     "Stop": [
-      { "hooks": [{ "type": "command", "command": "/tmp/hook-probe.sh Stop" }] }
+      { "hooks": [{ "type": "command", "command": "node server/hooks/hook-handler.mjs Stop" }] }
     ]
   }
 }

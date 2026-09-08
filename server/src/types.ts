@@ -31,6 +31,20 @@ export interface ClaudeBackgroundAgent {
 
 export type EmployeeStatus = "idle" | "working" | "waiting" | "done" | "error" | "no-agent";
 
+/**
+ * claude hooks イベントから推定する、より粒度の細かい「今何をしているか」。
+ * status（claude agents --json 由来、数秒遅れ）を hooks が届く限り上書きする。
+ */
+export type Activity =
+  | "starting"
+  | "thinking"
+  | "typing"
+  | "reading"
+  | "running"
+  | "researching"
+  | "waiting"
+  | "idle";
+
 export interface EmployeeView {
   id: string;
   name: string;
@@ -40,4 +54,14 @@ export interface EmployeeView {
   currentAgentId?: string;
   currentPrompt?: string;
   lastUpdatedAt?: number;
+  activity?: Activity;
+}
+
+export interface HookEventPayload {
+  hookEventName: string;
+  session_id?: string;
+  hook_event_name?: string;
+  tool_name?: string;
+  cwd?: string;
+  [key: string]: unknown;
 }

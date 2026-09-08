@@ -2,6 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { startAgent, listBackgroundAgents, getAgentLogs, stopAgent } from "./claude-cli.js";
 import { loadEmployees, getAllStates, setCurrentAgent } from "./store.js";
+import { getActivity, clearActivity } from "./activity-tracker.js";
 import type { ClaudeBackgroundAgent, Employee, EmployeeStatus, EmployeeView } from "./types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -36,16 +37,19 @@ export async function buildEmployeeViews(): Promise<EmployeeView[]> {
     const agent = state?.currentAgentId
       ? agents.find((a) => a.id === state.currentAgentId)
       : undefined;
+    const status = mapStatus(agent);
 
     return {
       id: employee.id,
       name: employee.name,
       role: employee.role,
       department: employee.department,
-      status: mapStatus(agent),
+      status,
       currentAgentId: state?.currentAgentId,
       currentPrompt: state?.history[0]?.prompt,
       lastUpdatedAt: agent?.startedAt,
+      // hooks 由来のアクティビティは working 中の演出にのみ使う
+      activity: status === "working" ? getActivity(employee.id) : undefined,
     };
   });
 }
@@ -79,6 +83,7 @@ export async function assignTask(
     prompt: trimmed,
     env: resolveApiKeyEnv(employee),
   });
+  clearActivity(employee.id);
   setCurrentAgent(employee.id, { agentId, prompt: trimmed, startedAt: Date.now() });
   return { agentId };
 }
