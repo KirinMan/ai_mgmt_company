@@ -20,4 +20,21 @@ export interface EmployeeView {
   currentPrompt?: string;
   lastUpdatedAt?: number;
   activity?: Activity;
+  cwd?: string;
+}
+
+export interface ChatTurn {
+  role: "user" | "assistant" | "action";
+  text: string;
+  ts?: string;
+}
+
+export {};
+
+declare global {
+  interface Window {
+    aiOffice?: {
+      pickFolder: () => Promise<string | null>;
+    };
+  }
 }

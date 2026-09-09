@@ -9,6 +9,9 @@ interface ActivityRecord {
 
 // employeeId -> 直近のアクティビティ（プロセス内メモリのみ、再起動でリセットされてよい）
 const activityByEmployee = new Map<string, ActivityRecord>();
+// employeeId -> 会話ログ(JSONL)の実ファイルパス。hooks イベントに含まれる
+// transcript_path をそのまま覚えておくことで、cwd から自前で推測する必要がなくなる。
+const transcriptPathByEmployee = new Map<string, string>();
 
 const TYPING_TOOLS = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
 const READING_TOOLS = new Set(["Read", "Grep", "Glob"]);
@@ -68,6 +71,11 @@ export function recordHookEvent(payload: HookEventPayload): string | undefined {
     updatedAt: Date.now(),
     detail: typeof payload.tool_name === "string" ? payload.tool_name : undefined,
   });
+
+  if (typeof payload.transcript_path === "string") {
+    transcriptPathByEmployee.set(employeeId, payload.transcript_path);
+  }
+
   return employeeId;
 }
 
@@ -75,6 +83,11 @@ export function getActivity(employeeId: string): Activity | undefined {
   return activityByEmployee.get(employeeId)?.activity;
 }
 
+export function getTranscriptPath(employeeId: string): string | undefined {
+  return transcriptPathByEmployee.get(employeeId);
+}
+
 export function clearActivity(employeeId: string): void {
   activityByEmployee.delete(employeeId);
+  transcriptPathByEmployee.delete(employeeId);
 }

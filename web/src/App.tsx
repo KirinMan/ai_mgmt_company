@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Activity, EmployeeStatus, EmployeeView } from "./types";
+import type { Activity, ChatTurn, EmployeeStatus, EmployeeView } from "./types";
 import { OfficeMap } from "./OfficeMap";
 
 const STATUS_LABEL: Record<EmployeeStatus, string> = {
@@ -31,13 +31,27 @@ const ACTIVITY_LABEL: Record<Activity, string> = {
   idle: "待機中",
 };
 
+function workdirStorageKey(employeeId: string) {
+  return `ai-office:workdir:${employeeId}`;
+}
+
 export default function App() {
   const [employees, setEmployees] = useState<EmployeeView[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [logs, setLogs] = useState<string>("");
+  const [chat, setChat] = useState<ChatTurn[]>([]);
+  const [rawLogs, setRawLogs] = useState<string>("");
   const [prompt, setPrompt] = useState("");
+  const [workdir, setWorkdir] = useState("");
+  const [defaultWorkdir, setDefaultWorkdir] = useState("");
   const [busy, setBusy] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((d) => setDefaultWorkdir(d.defaultWorkdir ?? ""));
+  }, []);
 
   useEffect(() => {
     const proto = location.protocol === "https:" ? "wss" : "ws";
@@ -52,21 +66,45 @@ export default function App() {
 
   const selected = employees.find((e) => e.id === selectedId) ?? null;
 
+  // 社員を切り替えたら、その社員向けに前回選んだフォルダ（なければ既定フォルダ）を復元する
+  useEffect(() => {
+    if (!selectedId) return;
+    const saved = localStorage.getItem(workdirStorageKey(selectedId));
+    setWorkdir(saved ?? defaultWorkdir);
+  }, [selectedId, defaultWorkdir]);
+
   useEffect(() => {
     if (!selectedId) return;
     let cancelled = false;
-    const fetchLogs = async () => {
-      const res = await fetch(`/api/employees/${selectedId}/logs`);
-      const data = await res.json();
-      if (!cancelled) setLogs(data.logs ?? "");
+    const fetchChat = async () => {
+      const [chatRes, logsRes] = await Promise.all([
+        fetch(`/api/employees/${selectedId}/chat`),
+        fetch(`/api/employees/${selectedId}/logs`),
+      ]);
+      const chatData = await chatRes.json();
+      const logsData = await logsRes.json();
+      if (!cancelled) {
+        setChat(chatData.turns ?? []);
+        setRawLogs(logsData.logs ?? "");
+      }
     };
-    fetchLogs();
-    const interval = setInterval(fetchLogs, 3000);
+    fetchChat();
+    const interval = setInterval(fetchChat, 2000);
     return () => {
       cancelled = true;
       clearInterval(interval);
     };
   }, [selectedId]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ block: "end" });
+  }, [chat]);
+
+  async function pickFolder() {
+    if (!window.aiOffice) return;
+    const picked = await window.aiOffice.pickFolder();
+    if (picked) setWorkdir(picked);
+  }
 
   async function submitTask() {
     if (!selectedId || !prompt.trim()) return;
@@ -75,13 +113,16 @@ export default function App() {
       const res = await fetch(`/api/employees/${selectedId}/tasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, workdir: workdir.trim() || undefined }),
       });
       if (!res.ok) {
         const err = await res.json();
         alert(`指示の送信に失敗しました: ${err.error ?? res.statusText}`);
       } else {
         setPrompt("");
+        if (workdir.trim()) {
+          localStorage.setItem(workdirStorageKey(selectedId), workdir.trim());
+        }
       }
     } finally {
       setBusy(false);
@@ -130,6 +171,32 @@ export default function App() {
                 </p>
               )}
 
+              <div className="cwd-row" title={selected.cwd ?? workdir}>
+                <span className="cwd-icon">📁</span>
+                <span className="cwd-path">
+                  {selected.cwd ?? workdir ?? "（未設定）"}
+                </span>
+              </div>
+
+              <label className="field-label" htmlFor="workdir">
+                作業フォルダ（次の指示で使う）
+              </label>
+              <div className="workdir-row">
+                <input
+                  id="workdir"
+                  type="text"
+                  value={workdir}
+                  onChange={(e) => setWorkdir(e.target.value)}
+                  placeholder="/path/to/project"
+                  spellCheck={false}
+                />
+                {window.aiOffice && (
+                  <button type="button" className="secondary" onClick={pickFolder}>
+                    📂 選ぶ
+                  </button>
+                )}
+              </div>
+
               <label className="field-label" htmlFor="prompt">
                 指示内容
               </label>
@@ -138,7 +205,7 @@ export default function App() {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="例: READMEに開発環境のセットアップ手順を追記してください"
-                rows={4}
+                rows={3}
               />
               <div className="actions">
                 <button onClick={submitTask} disabled={busy || !prompt.trim()}>
@@ -153,12 +220,36 @@ export default function App() {
                 </button>
               </div>
 
-              <h3 className="log-title">ログ</h3>
-              <pre className="log">{logs || "（ログはまだありません）"}</pre>
+              <h3 className="log-title">会話</h3>
+              <div className="chat">
+                {chat.length === 0 && (
+                  <p className="empty-hint chat-empty">まだ会話はありません。</p>
+                )}
+                {chat.map((turn, i) => (
+                  <ChatBubble key={i} turn={turn} />
+                ))}
+                <div ref={chatEndRef} />
+              </div>
+
+              <details className="raw-log-details">
+                <summary>詳細ログ（生のターミナル出力）</summary>
+                <pre className="log">{rawLogs || "（ログはまだありません）"}</pre>
+              </details>
             </>
           )}
         </aside>
       </main>
+    </div>
+  );
+}
+
+function ChatBubble({ turn }: { turn: ChatTurn }) {
+  if (turn.role === "action") {
+    return <div className="chat-action">{turn.text}</div>;
+  }
+  return (
+    <div className={`chat-bubble-row chat-bubble-row-${turn.role}`}>
+      <div className={`chat-bubble chat-bubble-${turn.role}`}>{turn.text}</div>
     </div>
   );
 }

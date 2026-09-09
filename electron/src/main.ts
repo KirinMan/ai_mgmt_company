@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { fork, ChildProcess } from "node:child_process";
 import path from "node:path";
 
@@ -6,6 +6,18 @@ let serverProcess: ChildProcess | null = null;
 let mainWindow: BrowserWindow | null = null;
 
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
+
+// AI社員に作業させるフォルダをネイティブのフォルダ選択ダイアログで選べるようにする。
+// ブラウザ単体で開いた場合はこの IPC が使えないため、フロントエンド側は
+// window.aiOffice の有無で「フォルダを選ぶ」ボタンの表示を切り替える。
+ipcMain.handle("pick-folder", async () => {
+  if (!mainWindow) return null;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ["openDirectory", "createDirectory"],
+  });
+  if (result.canceled || result.filePaths.length === 0) return null;
+  return result.filePaths[0];
+});
 
 /**
  * 開発時は npm run dev (concurrently) が server/web を別プロセスで既に起動しているので
@@ -32,6 +44,7 @@ function createWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      preload: path.join(__dirname, "preload.js"),
     },
   });
 

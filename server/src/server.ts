@@ -16,6 +16,7 @@ import {
   buildEmployeeViews,
   assignTask,
   getEmployeeLogsById,
+  getEmployeeChatById,
   stopEmployeeById,
   getTargetRepo,
 } from "./employee-service.js";
@@ -29,16 +30,21 @@ app.get("/api/employees", async (_req, res) => {
   res.json(await buildEmployeeViews());
 });
 
+app.get("/api/config", (_req, res) => {
+  res.json({ defaultWorkdir: getTargetRepo() });
+});
+
 app.post("/api/employees/:id/tasks", async (req, res) => {
   const prompt = String(req.body?.prompt ?? "");
+  const workdir = req.body?.workdir ? String(req.body.workdir) : undefined;
   try {
-    const { agentId } = await assignTask(req.params.id, prompt);
+    const { agentId } = await assignTask(req.params.id, prompt, workdir);
     res.json({ agentId });
   } catch (err) {
     const message = String(err);
     const status = message.includes("not found")
       ? 404
-      : message.includes("prompt is required")
+      : message.includes("prompt is required") || message.includes("workdir does not exist")
         ? 400
         : 500;
     res.status(status).json({ error: message });
@@ -52,6 +58,10 @@ app.get("/api/employees/:id/logs", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
+});
+
+app.get("/api/employees/:id/chat", (req, res) => {
+  res.json({ turns: getEmployeeChatById(req.params.id) });
 });
 
 app.post("/api/employees/:id/stop", async (req, res) => {

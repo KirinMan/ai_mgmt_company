@@ -10,6 +10,7 @@ export interface TaskRecord {
   agentId: string;
   prompt: string;
   startedAt: number;
+  workdir?: string;
 }
 
 export interface EmployeeState {
@@ -55,6 +56,7 @@ export interface EmployeeView {
   currentPrompt?: string;
   lastUpdatedAt?: number;
   activity?: Activity;
+  cwd?: string;
 }
 
 export interface HookEventPayload {
@@ -63,5 +65,13 @@ export interface HookEventPayload {
   hook_event_name?: string;
   tool_name?: string;
   cwd?: string;
+  transcript_path?: string;
   [key: string]: unknown;
+}
+
+/** チャット表示用に会話ログ(JSONL)を要約した1エントリ */
+export interface ChatTurn {
+  role: "user" | "assistant" | "action";
+  text: string;
+  ts?: string;
 }
