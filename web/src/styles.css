@@ -1,15 +1,16 @@
 :root {
-  --bg: #0e1220;
-  --surface: #161c2e;
-  --surface-2: #1c2338;
-  --line: rgba(160, 172, 206, 0.16);
-  --text: #e9ecf7;
-  --text-dim: #98a2c3;
-  --accent: #ff9d4d;
-  --good: #6fcf7d;
-  --warn: #f4c352;
-  --bad: #f2685c;
-  color-scheme: dark;
+  --bg: #f2ede1;
+  --surface: #ffffff;
+  --surface-2: #f6f1e6;
+  --line: rgba(120, 100, 70, 0.18);
+  --text: #3d3226;
+  --text-dim: #8a7c68;
+  --accent: #c9793f;
+  --accent-ink: #fff8ef;
+  --good: #3f7d50;
+  --warn: #a8761a;
+  --bad: #b23f2f;
+  color-scheme: light;
 }
 
 * {
@@ -85,27 +86,27 @@ body {
 }
 
 .status-idle {
-  background: rgba(152, 162, 195, 0.15);
+  background: rgba(138, 124, 104, 0.14);
   color: var(--text-dim);
 }
 
 .status-working {
-  background: rgba(111, 207, 125, 0.15);
+  background: rgba(63, 125, 80, 0.14);
   color: var(--good);
 }
 
 .status-waiting {
-  background: rgba(244, 195, 82, 0.15);
+  background: rgba(168, 118, 26, 0.14);
   color: var(--warn);
 }
 
 .status-done {
-  background: rgba(87, 224, 194, 0.15);
-  color: #57e0c2;
+  background: rgba(47, 133, 119, 0.14);
+  color: #2f8577;
 }
 
 .status-error {
-  background: rgba(242, 104, 92, 0.15);
+  background: rgba(178, 63, 47, 0.14);
   color: var(--bad);
 }
 
@@ -164,7 +165,7 @@ textarea {
 
 button {
   background: var(--accent);
-  color: #201200;
+  color: var(--accent-ink);
   border: none;
   border-radius: 8px;
   padding: 8px 14px;
@@ -191,7 +192,7 @@ button.secondary {
 }
 
 .log {
-  background: #0a0d17;
+  background: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 10px;
