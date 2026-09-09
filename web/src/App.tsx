@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import type { EmployeeStatus, EmployeeView } from "./types";
+import type { Activity, EmployeeStatus, EmployeeView } from "./types";
+import { OfficeMap } from "./OfficeMap";
 
 const STATUS_LABEL: Record<EmployeeStatus, string> = {
   "no-agent": "未着手",
@@ -19,15 +20,16 @@ const STATUS_CLASS: Record<EmployeeStatus, string> = {
   error: "status status-error",
 };
 
-function groupByDepartment(employees: EmployeeView[]): Map<string, EmployeeView[]> {
-  const map = new Map<string, EmployeeView[]>();
-  for (const emp of employees) {
-    const list = map.get(emp.department) ?? [];
-    list.push(emp);
-    map.set(emp.department, list);
-  }
-  return map;
-}
+const ACTIVITY_LABEL: Record<Activity, string> = {
+  starting: "出社中…",
+  thinking: "考え中…",
+  typing: "編集中…",
+  reading: "調査中…",
+  running: "コマンド実行中…",
+  researching: "Web検索中…",
+  waiting: "確認待ち…",
+  idle: "待機中",
+};
 
 export default function App() {
   const [employees, setEmployees] = useState<EmployeeView[]>([]);
@@ -91,49 +93,22 @@ export default function App() {
     await fetch(`/api/employees/${selectedId}/stop`, { method: "POST" });
   }
 
-  const groups = groupByDepartment(employees);
-
   return (
     <div className="layout">
       <header className="topbar">
         <h1>AI社員オフィス</h1>
-        <span className="topbar-sub">部署別ダッシュボード · Phase 1</span>
+        <span className="topbar-sub">部署別フロアマップ · Phase 2</span>
       </header>
 
       <main className="main">
         <section className="floor">
-          {employees.length === 0 && (
+          {employees.length === 0 ? (
             <p className="empty-hint">
               社員データを読み込み中、またはサーバーに接続できていません。
             </p>
+          ) : (
+            <OfficeMap employees={employees} selectedId={selectedId} onSelect={setSelectedId} />
           )}
-          {[...groups.entries()].map(([dept, members]) => (
-            <div className="dept" key={dept}>
-              <h2 className="dept-title">{dept}</h2>
-              <div className="desks">
-                {members.map((emp) => (
-                  <button
-                    key={emp.id}
-                    className={`desk ${emp.id === selectedId ? "desk-selected" : ""}`}
-                    onClick={() => setSelectedId(emp.id)}
-                  >
-                    <div className="desk-head">
-                      <span className="desk-name">{emp.name}</span>
-                      <span className={STATUS_CLASS[emp.status]}>
-                        {STATUS_LABEL[emp.status]}
-                      </span>
-                    </div>
-                    <div className="desk-role">{emp.role}</div>
-                    {emp.currentPrompt && (
-                      <div className="desk-task" title={emp.currentPrompt}>
-                        {emp.currentPrompt}
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
         </section>
 
         <aside className="panel">
@@ -149,6 +124,11 @@ export default function App() {
               <p className="panel-meta">
                 {selected.department} / {selected.role}
               </p>
+              {selected.status === "working" && (
+                <p className="panel-activity">
+                  {ACTIVITY_LABEL[selected.activity ?? "thinking"]}
+                </p>
+              )}
 
               <label className="field-label" htmlFor="prompt">
                 指示内容
