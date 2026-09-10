@@ -51,6 +51,7 @@ export interface EmployeeView {
   name: string;
   role: string;
   department: string;
+  apiKeyEnv?: string;
   status: EmployeeStatus;
   currentAgentId?: string;
   currentPrompt?: string;

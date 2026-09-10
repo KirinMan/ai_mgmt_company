@@ -6,9 +6,24 @@ import {
   listBackgroundAgents,
   getAgentLogs,
   stopAgent,
+  removeAgent,
   isGitRepo,
 } from "./claude-cli.js";
-import { loadEmployees, getAllStates, setCurrentAgent } from "./store.js";
+import {
+  loadEmployees,
+  loadDepartments,
+  getAllStates,
+  setCurrentAgent,
+  createDepartment as storeCreateDepartment,
+  renameDepartment as storeRenameDepartment,
+  deleteDepartment as storeDeleteDepartment,
+  createEmployee as storeCreateEmployee,
+  updateEmployee as storeUpdateEmployee,
+  deleteEmployee as storeDeleteEmployee,
+  removeEmployeeState,
+  type CreateEmployeeInput,
+  type UpdateEmployeeInput,
+} from "./store.js";
 import { getActivity, getTranscriptPath, clearActivity } from "./activity-tracker.js";
 import { readChatTurns } from "./transcript.js";
 import type {
@@ -62,6 +77,7 @@ export async function buildEmployeeViews(): Promise<EmployeeView[]> {
       name: employee.name,
       role: employee.role,
       department: employee.department,
+      apiKeyEnv: employee.apiKeyEnv,
       status,
       currentAgentId: state?.currentAgentId,
       currentPrompt: state?.history[0]?.prompt,
@@ -139,4 +155,62 @@ export async function stopEmployeeById(employeeId: string): Promise<void> {
   const agentId = getAllStates()[employeeId]?.currentAgentId;
   if (!agentId) throw new Error("no active agent");
   await stopAgent(agentId);
+}
+
+// --- 組織管理（社長として部署・社員を操作する）---
+
+export function listDepartments(): string[] {
+  return loadDepartments();
+}
+
+export function addDepartment(name: string): void {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("department name is required");
+  storeCreateDepartment(trimmed);
+}
+
+export function renameDepartmentByName(oldName: string, newName: string): void {
+  const trimmed = newName.trim();
+  if (!trimmed) throw new Error("department name is required");
+  storeRenameDepartment(oldName, trimmed);
+}
+
+export function removeDepartment(name: string): void {
+  storeDeleteDepartment(name);
+}
+
+export function addEmployee(input: CreateEmployeeInput): Employee {
+  if (!input.name?.trim()) throw new Error("name is required");
+  if (!input.role?.trim()) throw new Error("role is required");
+  if (!input.department?.trim()) throw new Error("department is required");
+  return storeCreateEmployee({
+    name: input.name.trim(),
+    role: input.role.trim(),
+    department: input.department.trim(),
+    apiKeyEnv: input.apiKeyEnv?.trim(),
+  });
+}
+
+export function editEmployee(id: string, patch: UpdateEmployeeInput): Employee {
+  return storeUpdateEmployee(id, patch);
+}
+
+/** 社員を解雇する。実行中のバックグラウンドセッションがあれば止めてから削除する。 */
+export async function removeEmployee(employeeId: string): Promise<void> {
+  const agentId = getAllStates()[employeeId]?.currentAgentId;
+  if (agentId) {
+    try {
+      await stopAgent(agentId);
+    } catch {
+      // 既に終了している等は無視
+    }
+    try {
+      await removeAgent(agentId);
+    } catch {
+      // worktree が使用中で消せない等は無視（孤立しても実害は小さい）
+    }
+  }
+  removeEmployeeState(employeeId);
+  storeDeleteEmployee(employeeId);
+  clearActivity(employeeId);
 }

@@ -3,5 +3,6 @@ dist/
 release/
 .env
 server/data/state.json
+server/data/employees.json
 .claude/worktrees/
 *.tsbuildinfo

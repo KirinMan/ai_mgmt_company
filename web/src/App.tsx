@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { Activity, ChatTurn, EmployeeStatus, EmployeeView } from "./types";
 import { OfficeMap } from "./OfficeMap";
+import { OrgAdmin } from "./OrgAdmin";
+import { FolderPickerModal } from "./FolderPickerModal";
 
 const STATUS_LABEL: Record<EmployeeStatus, string> = {
   "no-agent": "未着手",
@@ -44,6 +46,8 @@ export default function App() {
   const [workdir, setWorkdir] = useState("");
   const [defaultWorkdir, setDefaultWorkdir] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showOrgAdmin, setShowOrgAdmin] = useState(false);
+  const [showFolderPicker, setShowFolderPicker] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -100,12 +104,6 @@ export default function App() {
     chatEndRef.current?.scrollIntoView({ block: "end" });
   }, [chat]);
 
-  async function pickFolder() {
-    if (!window.aiOffice) return;
-    const picked = await window.aiOffice.pickFolder();
-    if (picked) setWorkdir(picked);
-  }
-
   async function submitTask() {
     if (!selectedId || !prompt.trim()) return;
     setBusy(true);
@@ -134,11 +132,28 @@ export default function App() {
     await fetch(`/api/employees/${selectedId}/stop`, { method: "POST" });
   }
 
+  if (showOrgAdmin) {
+    return (
+      <div className="layout">
+        <header className="topbar">
+          <h1>AI社員オフィス</h1>
+          <span className="topbar-sub">部署別フロアマップ · Phase 2</span>
+        </header>
+        <main className="main main-single">
+          <OrgAdmin onClose={() => setShowOrgAdmin(false)} />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="layout">
       <header className="topbar">
         <h1>AI社員オフィス</h1>
         <span className="topbar-sub">部署別フロアマップ · Phase 2</span>
+        <button className="secondary org-admin-open" onClick={() => setShowOrgAdmin(true)}>
+          🏢 組織管理
+        </button>
       </header>
 
       <main className="main">
@@ -190,11 +205,13 @@ export default function App() {
                   placeholder="/path/to/project"
                   spellCheck={false}
                 />
-                {window.aiOffice && (
-                  <button type="button" className="secondary" onClick={pickFolder}>
-                    📂 選ぶ
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setShowFolderPicker(true)}
+                >
+                  📂 選ぶ
+                </button>
               </div>
 
               <label className="field-label" htmlFor="prompt">
@@ -239,6 +256,17 @@ export default function App() {
           )}
         </aside>
       </main>
+
+      {showFolderPicker && (
+        <FolderPickerModal
+          initialPath={workdir || defaultWorkdir}
+          onSelect={(path) => {
+            setWorkdir(path);
+            setShowFolderPicker(false);
+          }}
+          onClose={() => setShowFolderPicker(false)}
+        />
+      )}
     </div>
   );
 }

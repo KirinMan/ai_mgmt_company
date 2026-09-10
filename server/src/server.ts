@@ -11,6 +11,7 @@ dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 import { removeAgent } from "./claude-cli.js";
 import { getAllStates } from "./store.js";
 import { recordHookEvent } from "./activity-tracker.js";
+import { browseDirectory } from "./browse.js";
 import type { HookEventPayload } from "./types.js";
 import {
   buildEmployeeViews,
@@ -19,6 +20,13 @@ import {
   getEmployeeChatById,
   stopEmployeeById,
   getTargetRepo,
+  listDepartments,
+  addDepartment,
+  renameDepartmentByName,
+  removeDepartment,
+  addEmployee,
+  editEmployee,
+  removeEmployee,
 } from "./employee-service.js";
 
 const PORT = Number(process.env.PORT ?? 4000);
@@ -32,6 +40,16 @@ app.get("/api/employees", async (_req, res) => {
 
 app.get("/api/config", (_req, res) => {
   res.json({ defaultWorkdir: getTargetRepo() });
+});
+
+// 作業フォルダ選択モーダル用の簡易ディレクトリブラウザ
+app.get("/api/browse", (req, res) => {
+  try {
+    const result = browseDirectory(req.query.path ? String(req.query.path) : undefined);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: String(err) });
+  }
 });
 
 app.post("/api/employees/:id/tasks", async (req, res) => {
@@ -94,6 +112,79 @@ async function broadcastEmployeeViews() {
     if (client.readyState === client.OPEN) client.send(payload);
   }
 }
+
+// --- 組織管理（部署・社員の追加/変更/削除）---
+
+app.get("/api/departments", (_req, res) => {
+  res.json({ departments: listDepartments() });
+});
+
+app.post("/api/departments", (req, res) => {
+  try {
+    addDepartment(String(req.body?.name ?? ""));
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: String(err) });
+  }
+});
+
+app.patch("/api/departments/:name", async (req, res) => {
+  try {
+    renameDepartmentByName(req.params.name, String(req.body?.newName ?? ""));
+    res.json({ ok: true });
+    void broadcastEmployeeViews();
+  } catch (err) {
+    res.status(400).json({ error: String(err) });
+  }
+});
+
+app.delete("/api/departments/:name", (req, res) => {
+  try {
+    removeDepartment(req.params.name);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: String(err) });
+  }
+});
+
+app.post("/api/employees", async (req, res) => {
+  try {
+    const employee = addEmployee({
+      name: String(req.body?.name ?? ""),
+      role: String(req.body?.role ?? ""),
+      department: String(req.body?.department ?? ""),
+      apiKeyEnv: req.body?.apiKeyEnv ? String(req.body.apiKeyEnv) : undefined,
+    });
+    res.json(employee);
+    void broadcastEmployeeViews();
+  } catch (err) {
+    res.status(400).json({ error: String(err) });
+  }
+});
+
+app.patch("/api/employees/:id", async (req, res) => {
+  try {
+    const patch: Record<string, string> = {};
+    for (const key of ["name", "role", "department", "apiKeyEnv"] as const) {
+      if (req.body?.[key] !== undefined) patch[key] = String(req.body[key]);
+    }
+    const employee = editEmployee(req.params.id, patch);
+    res.json(employee);
+    void broadcastEmployeeViews();
+  } catch (err) {
+    res.status(400).json({ error: String(err) });
+  }
+});
+
+app.delete("/api/employees/:id", async (req, res) => {
+  try {
+    await removeEmployee(req.params.id);
+    res.json({ ok: true });
+    void broadcastEmployeeViews();
+  } catch (err) {
+    res.status(400).json({ error: String(err) });
+  }
+});
 
 // claude CLI の hooks（server/hooks/hook-handler.mjs）から飛んでくるイベント。
 // worktree 内で動いているエージェントの「今何をしているか」を即座に反映する。
